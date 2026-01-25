@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>KPSS Tarih | Akıllı Konu Anlatımı</title>
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f6f7fb;
+      margin: 0;
+      padding: 0;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 60px auto;
+      padding: 0 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 32px;
+      font-size: 16px;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #6366f1;
+    }
+
+    button {
+      padding: 14px 22px;
+      font-size: 16px;
+      font-weight: 600;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #4f46e5;
+    }
+
+    .card {
+      background: white;
+      margin-top: 32px;
+      padding: 28px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .story {
+      margin: 20px 0;
+      white-space: pre-line;
+      line-height: 1.7;
+      color: #374151;
+    }
+
+    .question {
+      font-weight: 600;
+      margin-top: 24px;
+    }
+
+    .choices {
+      list-style: none;
+      padding: 0;
+      margin-top: 12px;
+    }
+
+    .choices li {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f9fafb;
+      margin-bottom: 8px;
+    }
+
+    .answer {
+      margin-top: 16px;
+      font-weight: 600;
+      color: #16a34a;
+    }
+
+    .explanation {
+      margin-top: 8px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .loading {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 26px;
+      }
+
+      .search-box {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>KPSS Tarih</h1>
+    <p class="subtitle">
+      Konuyu yaz, yapay zekâ KPSS dilinde anlatsın ve soru üretsin.
+    </p>
+
+    <div class="search-box">
+      <input id="query" type="text" placeholder="Örn: İlk Türk-İslam Devletleri">
+      <button onclick="searchTopic()">Getir</button>
+    </div>
+
+    <div id="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    async function searchTopic() {
+      const query = document.getElementById("query").value.trim();
+      if (!query) {
+        alert("Lütfen bir konu yaz");
+        return;
+      }
+
+      const resultDiv = document.getElementById("result");
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
+
+      const response = await fetch("http://localhost:5000/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+
+      const data = await response.json();
+
+      resultDiv.innerHTML = `
+        <div class="card">
+          <h2>${data.topic}</h2>
+
+          <div class="story">${data.story}</div>
+
+          <div class="question">${data.question}</div>
+          <ul class="choices">
+            <li>A) ${data.choices.A}</li>
+            <li>B) ${data.choices.B}</li>
+            <li>C) ${data.choices.C}</li>
+            <li>D) ${data.choices.D}</li>
+          </ul>
+
+          <div class="answer">Doğru Cevap: ${data.answer}</div>
+          <div class="explanation">${data.explanation}</div>
+        </div>
+      `;
+    }
+  </script>
+
+</body>
+</html>
