@@ -1,3 +1,6 @@
+import os
+print("ENV TEST →", os.getenv("GEMINI_API_KEY"))
+
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
@@ -108,6 +111,9 @@ def generate():
             "message": "Sunucu hatası oluştu."
         }), 500
 
+@app.route("/ping")
+def ping():
+    return "pong"
 
 @app.route("/")
 def index():
