@@ -110,6 +110,7 @@ Başka hiçbir metin yazma.
 def generate():
     data = request.get_json(silent=True)
     query = data.get("query") if data else None
+    print("RAW RESULT →", result)
 
     if not query:
         return jsonify(empty_response()), 200
