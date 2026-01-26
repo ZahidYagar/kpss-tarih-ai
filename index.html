@@ -52,8 +52,6 @@
       outline: none;
     }
 
-    input:focus { border-color: #6366f1; }
-
     button {
       padding: 14px 22px;
       font-size: 16px;
@@ -64,8 +62,6 @@
       border-radius: 10px;
       cursor: pointer;
     }
-
-    button:hover { background: #4f46e5; }
 
     .card {
       background: white;
@@ -82,15 +78,20 @@
       color: #374151;
     }
 
+    .question-block {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
     .question {
       font-weight: 600;
-      margin-top: 24px;
+      margin-bottom: 12px;
     }
 
     .choices {
       list-style: none;
       padding: 0;
-      margin-top: 12px;
     }
 
     .choices li {
@@ -99,7 +100,7 @@
       background: #f9fafb;
       margin-bottom: 8px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: 0.2s;
     }
 
     .choices li:hover {
@@ -118,10 +119,10 @@
     }
 
     .explanation {
-      margin-top: 12px;
-      color: #6b7280;
-      font-size: 14px;
       display: none;
+      margin-top: 8px;
+      font-size: 14px;
+      color: #6b7280;
     }
 
     .spinner {
@@ -137,18 +138,13 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-
-    @media (max-width: 600px) {
-      .search-box { flex-direction: column; }
-      button { width: 100%; }
-    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <h1>KPSS Tarih</h1>
-    <p class="subtitle">Konuyu yaz, yapay zekâ anlatsın ve soru üretsin.</p>
+    <p class="subtitle">Konuyu yaz, 5 soruluk mini deneme çöz.</p>
 
     <div class="search-box">
       <input id="query" type="text" placeholder="Örn: İlk Türk-İslam Devletleri">
@@ -160,89 +156,84 @@
 
   <script>
     let lastTopic = "";
+    let score = 0;
+
     document.getElementById("searchBtn").addEventListener("click", searchTopic);
 
     async function searchTopic() {
-    let query = document.getElementById("query").value.trim();
+      let query = document.getElementById("query").value.trim();
+      if (!query && lastTopic) query = lastTopic;
+      if (!query) return alert("Konu gir");
 
-if (!query && lastTopic) {
-  query = lastTopic;
-}
-
-if (!query) {
-  alert("Lütfen bir konu yaz");
-  return;
-}
-
-lastTopic = query;
+      lastTopic = query;
+      score = 0;
 
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
-      resultDiv.innerHTML = `
-        <div class="spinner"></div>
-        <p style="text-align:center; color:#6b7280;">İçerik hazırlanıyor...</p>
-      `;
+      resultDiv.innerHTML = `<div class="spinner"></div>`;
 
-      try {
-        const response = await fetch("/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query })
-        });
+      const response = await fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
 
-        const data = await response.json();
+      const data = await response.json();
 
-        resultDiv.innerHTML = `
-          <div class="card">
-            <h2>${data.topic}</h2>
+      let questionsHtml = "";
 
-            <div class="story">${data.story}</div>
-
-            <div class="question">${data.question}</div>
-
+      data.questions.forEach((q, i) => {
+        questionsHtml += `
+          <div class="question-block" data-answer="${q.answer}">
+            <div class="question">${i + 1}. ${q.question}</div>
             <ul class="choices">
-              <li data-option="A">A) ${data.choices.A}</li>
-              <li data-option="B">B) ${data.choices.B}</li>
-              <li data-option="C">C) ${data.choices.C}</li>
-              <li data-option="D">D) ${data.choices.D}</li>
+              ${Object.entries(q.choices).map(
+                ([key, val]) => `<li data-option="${key}">${key}) ${val}</li>`
+              ).join("")}
             </ul>
-
-            <div id="feedback" class="explanation">
-              <strong>Açıklama:</strong> ${data.explanation}
+            <div class="explanation">
+              <strong>Doğru:</strong> ${q.answer} — ${q.explanation}
             </div>
-
-            <button id="nextBtn" style="margin-top:20px;">Yeni Soru Üret</button>
           </div>
         `;
+      });
 
-        bindChoices(data.answer);
-        document.getElementById("nextBtn").addEventListener("click", searchTopic);
+      resultDiv.innerHTML = `
+        <div class="card">
+          <h2>${data.topic}</h2>
+          <div class="story">${data.story}</div>
+          ${questionsHtml}
+          <p id="score" style="margin-top:20px;font-weight:600;"></p>
+        </div>
+      `;
 
-      } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = `<p style="color:red;">Bir hata oluştu.</p>`;
-      }
+      bindAllQuestions();
     }
 
-    function bindChoices(correctAnswer) {
-      const choices = document.querySelectorAll(".choices li");
+    function bindAllQuestions() {
+      document.querySelectorAll(".question-block").forEach(block => {
+        const correct = block.dataset.answer;
+        const explanation = block.querySelector(".explanation");
 
-      choices.forEach(choice => {
-        choice.addEventListener("click", () => {
-          choices.forEach(c => c.replaceWith(c.cloneNode(true)));
+        block.querySelectorAll("li").forEach(li => {
+          li.addEventListener("click", () => {
+            if (block.classList.contains("done")) return;
+            block.classList.add("done");
 
-          const selected = choice.dataset.option;
+            const selected = li.dataset.option;
+            if (selected === correct) {
+              li.classList.add("correct");
+              score++;
+            } else {
+              li.classList.add("wrong");
+              block.querySelector(`li[data-option="${correct}"]`)
+                ?.classList.add("correct");
+            }
 
-          if (selected === correctAnswer) {
-            choice.classList.add("correct");
-          } else {
-            choice.classList.add("wrong");
-            document
-              .querySelector(`.choices li[data-option="${correctAnswer}"]`)
-              ?.classList.add("correct");
-          }
-
-          document.getElementById("feedback").style.display = "block";
+            explanation.style.display = "block";
+            document.getElementById("score").innerText =
+              `Skor: ${score} / 5`;
+          });
         });
       });
     }
