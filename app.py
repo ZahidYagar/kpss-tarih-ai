@@ -10,27 +10,43 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-# ✅ DOĞRU GEMINI CLIENT
+# ✅ Gemini client (env variable'dan)
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-def empty_response():
+def empty_response(topic=""):
     return {
-        "topic": "",
+        "topic": topic,
         "story": "",
         "questions": []
     }
 
 
-def safe_json_parse(text):
+def safe_json_parse(text, topic=""):
+    """
+    Gemini bazen JSON dışı metin döndürebilir.
+    Bu fonksiyon:
+    - İlk JSON bloğunu yakalar
+    - Olmazsa boş ama güvenli response döner
+    """
+    if not text:
+        return empty_response(topic)
+
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
-        return empty_response()
+        return empty_response(topic)
 
     try:
-        return json.loads(match.group())
-    except json.JSONDecodeError:
-        return empty_response()
+        data = json.loads(match.group())
+
+        # 🔒 questions garanti olsun
+        if "questions" not in data or not isinstance(data["questions"], list):
+            data["questions"] = []
+
+        return data
+
+    except Exception:
+        return empty_response(topic)
 
 
 def generate_content_from_query(user_query):
@@ -43,7 +59,7 @@ Görevlerin:
 1. Konuyu KPSS dilinde, en fazla 250 kelimeyle hikâyeleştirerek anlat.
 2. Ardından AYNI KONUDAN **5 adet KPSS formatında soru** üret.
 3. Her soru 4 şıklı (A, B, C, D) olsun.
-4. Her soru için doğru cevabı ve kısa açıklama yaz.
+4. Her soru için doğru cevabı ve kısa bir açıklama yaz.
 
 ÇIKTIYI SADECE aşağıdaki JSON formatında ver.
 Başka hiçbir metin yazma.
@@ -72,37 +88,32 @@ Başka hiçbir metin yazma.
         contents=prompt
     )
 
-    return safe_json_parse(response.text)
+    return safe_json_parse(response.text, user_query)
 
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    data = request.get_json()
-    query = data.get("query")
+    data = request.get_json(silent=True)
+    query = data.get("query") if data else None
 
     if not query:
-        return jsonify({
-            "error": "bad_request",
-            "message": "query boş"
-        }), 400
+        # ❌ 400 yerine güvenli 200
+        return jsonify(empty_response()), 200
 
     try:
         result = generate_content_from_query(query)
-        return jsonify(result)
+
+        # 🔒 ekstra güvenlik
+        if not result or "questions" not in result:
+            result = empty_response(query)
+
+        return jsonify(result), 200
 
     except Exception as e:
-        error_msg = str(e)
+        # 🔥 Log’a düşer ama kullanıcıya patlamaz
+        print("BACKEND ERROR:", str(e))
 
-        if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
-            return jsonify({
-                "error": "quota",
-                "message": "Kullanım limiti doldu. Lütfen biraz sonra tekrar deneyin."
-            }), 429
-
-        return jsonify({
-            "error": "server",
-            "message": "Sunucu hatası oluştu."
-        }), 500
+        return jsonify(empty_response(query)), 200
 
 
 @app.route("/ping")
