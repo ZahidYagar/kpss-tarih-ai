@@ -159,14 +159,22 @@
   </div>
 
   <script>
+    let lastTopic = "";
     document.getElementById("searchBtn").addEventListener("click", searchTopic);
 
     async function searchTopic() {
-      const query = document.getElementById("query").value.trim();
-      if (!query) {
-        alert("Lütfen bir konu yaz");
-        return;
-      }
+    let query = document.getElementById("query").value.trim();
+
+if (!query && lastTopic) {
+  query = lastTopic;
+}
+
+if (!query) {
+  alert("Lütfen bir konu yaz");
+  return;
+}
+
+lastTopic = query;
 
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
