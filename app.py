@@ -9,14 +9,22 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-# Gemini client (API key ortam değişkeninden okunur)
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# Gemini client
+client = genai.Client(api_key=os.getenv("AIzaSyCl5yG6YzC3yPJrFtKk-b7OqWEQ9N5kpLI"))
+
+
+def empty_response():
+    return {
+        "topic": "",
+        "story": "",
+        "questions": []
+    }
 
 
 def safe_json_parse(text):
     """
-    Gemini bazen JSON öncesi/sonrası metin ekleyebilir.
-    Bu fonksiyon sadece ilk JSON bloğunu yakalar.
+    Gemini bazen JSON dışı metin ekleyebilir.
+    Sadece ilk JSON bloğunu yakalar.
     """
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
@@ -28,22 +36,6 @@ def safe_json_parse(text):
         return empty_response()
 
 
-def empty_response():
-    return {
-        "topic": "",
-        "story": "",
-        "question": "",
-        "choices": {
-            "A": "",
-            "B": "",
-            "C": "",
-            "D": ""
-        },
-        "answer": "",
-        "explanation": ""
-    }
-
-
 def generate_content_from_query(user_query):
     prompt = f"""
 Sen KPSS Tarih uzmanı bir eğitmendsin.
@@ -52,9 +44,9 @@ Konu: {user_query}
 
 Görevlerin:
 1. Konuyu KPSS dilinde, en fazla 250 kelimeyle hikâyeleştirerek anlat.
-2. Ardından KPSS formatında **4 şıklı (A, B, C, D)** bir soru üret.
-3. **Şıklar mutlaka anlamlı ve birbirinden farklı olsun.**
-4. Doğru cevabı belirt ve kısa bir açıklama yaz.
+2. Ardından AYNI KONUDAN **5 adet KPSS formatında soru** üret.
+3. Her soru 4 şıklı (A, B, C, D) olsun.
+4. Her soru için doğru cevabı ve kısa açıklama yaz.
 
 ÇIKTIYI SADECE aşağıdaki JSON formatında ver.
 Başka hiçbir metin yazma.
@@ -62,15 +54,19 @@ Başka hiçbir metin yazma.
 {{
   "topic": "{user_query}",
   "story": "",
-  "question": "",
-  "choices": {{
-    "A": "",
-    "B": "",
-    "C": "",
-    "D": ""
-  }},
-  "answer": "",
-  "explanation": ""
+  "questions": [
+    {{
+      "question": "",
+      "choices": {{
+        "A": "",
+        "B": "",
+        "C": "",
+        "D": ""
+      }},
+      "answer": "",
+      "explanation": ""
+    }}
+  ]
 }}
 """
 
@@ -107,7 +103,6 @@ def generate():
                 "message": "Günlük ücretsiz kullanım limiti doldu. Lütfen biraz sonra tekrar deneyin."
             }), 429
 
-        # Diğer hatalar
         return jsonify({
             "error": "server",
             "message": "Sunucu hatası oluştu."
