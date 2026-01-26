@@ -23,23 +23,14 @@ def empty_response(topic=""):
 
 
 def safe_json_parse(text, topic=""):
-    """
-    Gemini çıktısını GÜVENLİ şekilde parse eder.
-    - ```json ``` bloklarını temizler
-    - Non-greedy regex kullanır
-    - Bozulursa asla frontend'i kırmaz
-    """
-
     if not text:
         return empty_response(topic)
 
     cleaned = text.strip()
 
-    # ```json ``` bloklarını temizle
     if cleaned.startswith("```"):
         cleaned = cleaned.replace("```json", "").replace("```", "").strip()
 
-    # 🔥 NON-GREEDY JSON YAKALAMA (EN KRİTİK SATIR)
     match = re.search(r"\{[\s\S]*?\}", cleaned)
     if not match:
         print("JSON PARSE FAIL → RAW:", text)
@@ -48,7 +39,6 @@ def safe_json_parse(text, topic=""):
     try:
         data = json.loads(match.group())
 
-        # Alanları garanti altına al
         data["topic"] = data.get("topic", topic)
         data["story"] = data.get("story", "")
         data["questions"] = data.get("questions", [])
@@ -110,7 +100,6 @@ Başka hiçbir metin yazma.
 def generate():
     data = request.get_json(silent=True)
     query = data.get("query") if data else None
-    print("RAW RESULT →", result)
 
     if not query:
         return jsonify(empty_response()), 200
@@ -118,7 +107,9 @@ def generate():
     try:
         result = generate_content_from_query(query)
 
-        # 🔒 Ekstra güvenlik
+        # ✅ DEBUG DOĞRU YERDE
+        print("RAW RESULT →", result)
+
         if not result or not isinstance(result.get("questions"), list):
             result = empty_response(query)
 
