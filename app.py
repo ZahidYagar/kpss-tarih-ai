@@ -10,7 +10,7 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Gemini client (env variable'dan)
+# ✅ Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -24,28 +24,43 @@ def empty_response(topic=""):
 
 def safe_json_parse(text, topic=""):
     """
-    Gemini bazen JSON dışı metin döndürebilir.
-    Bu fonksiyon:
-    - İlk JSON bloğunu yakalar
-    - Olmazsa boş ama güvenli response döner
+    Gemini çıktısını GÜVENLİ şekilde parse eder.
+    - ```json ``` bloklarını temizler
+    - Non-greedy regex kullanır
+    - Bozulursa asla frontend'i kırmaz
     """
+
     if not text:
         return empty_response(topic)
 
-    match = re.search(r"\{.*\}", text, re.DOTALL)
+    cleaned = text.strip()
+
+    # ```json ``` bloklarını temizle
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+
+    # 🔥 NON-GREEDY JSON YAKALAMA (EN KRİTİK SATIR)
+    match = re.search(r"\{[\s\S]*?\}", cleaned)
     if not match:
+        print("JSON PARSE FAIL → RAW:", text)
         return empty_response(topic)
 
     try:
         data = json.loads(match.group())
 
-        # 🔒 questions garanti olsun
-        if "questions" not in data or not isinstance(data["questions"], list):
+        # Alanları garanti altına al
+        data["topic"] = data.get("topic", topic)
+        data["story"] = data.get("story", "")
+        data["questions"] = data.get("questions", [])
+
+        if not isinstance(data["questions"], list):
             data["questions"] = []
 
         return data
 
-    except Exception:
+    except Exception as e:
+        print("JSON LOAD ERROR:", e)
+        print("RAW TEXT:", text)
         return empty_response(topic)
 
 
@@ -97,22 +112,19 @@ def generate():
     query = data.get("query") if data else None
 
     if not query:
-        # ❌ 400 yerine güvenli 200
         return jsonify(empty_response()), 200
 
     try:
         result = generate_content_from_query(query)
 
-        # 🔒 ekstra güvenlik
-        if not result or "questions" not in result:
+        # 🔒 Ekstra güvenlik
+        if not result or not isinstance(result.get("questions"), list):
             result = empty_response(query)
 
         return jsonify(result), 200
 
     except Exception as e:
-        # 🔥 Log’a düşer ama kullanıcıya patlamaz
         print("BACKEND ERROR:", str(e))
-
         return jsonify(empty_response(query)), 200
 
 
