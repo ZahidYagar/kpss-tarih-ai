@@ -98,97 +98,69 @@
       border-radius: 8px;
       background: #f9fafb;
       margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .answer {
-      margin-top: 16px;
+    .choices li:hover {
+      background: #eef2ff;
+    }
+
+    .correct {
+      background: #dcfce7 !important;
+      color: #166534;
       font-weight: 600;
-      color: #16a34a;
+    }
+
+    .wrong {
+      background: #fee2e2 !important;
+      color: #991b1b;
     }
 
     .explanation {
-      margin-top: 8px;
+      margin-top: 12px;
       color: #6b7280;
       font-size: 14px;
+      display: none;
     }
 
-    .loading {
-      color: #6b7280;
-      font-style: italic;
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     @media (max-width: 600px) {
       .search-box { flex-direction: column; }
       button { width: 100%; }
     }
-    .spinner {
-  width: 32px;
-  height: 32px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #6366f1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-/* Spinner */
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 4px solid #e5e7eb;
-  border-top: 4px solid #6366f1;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Tıklanabilir şıklar */
-.choices li {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.choices li:hover {
-  background: #eef2ff;
-}
-
-.correct {
-  background: #dcfce7 !important;
-  color: #166534;
-  font-weight: 600;
-}
-
-.wrong {
-  background: #fee2e2 !important;
-  color: #991b1b;
-}
-
   </style>
 </head>
 
 <body>
   <div class="container">
     <h1>KPSS Tarih</h1>
-    <p class="subtitle">
-      Konuyu yaz, yapay zekâ KPSS dilinde anlatsın ve soru üretsin.
-    </p>
+    <p class="subtitle">Konuyu yaz, yapay zekâ anlatsın ve soru üretsin.</p>
 
     <div class="search-box">
       <input id="query" type="text" placeholder="Örn: İlk Türk-İslam Devletleri">
-      <button onclick="searchTopic()">Getir</button>
+      <button id="searchBtn">Getir</button>
     </div>
 
     <div id="result" style="display:none;"></div>
   </div>
 
   <script>
+    document.getElementById("searchBtn").addEventListener("click", searchTopic);
+
     async function searchTopic() {
       const query = document.getElementById("query").value.trim();
       if (!query) {
@@ -198,30 +170,11 @@
 
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
-     resultDiv.innerHTML = `
-  <div class="card">
-    <h2>${data.topic}</h2>
+      resultDiv.innerHTML = `
+        <div class="spinner"></div>
+        <p style="text-align:center; color:#6b7280;">İçerik hazırlanıyor...</p>
+      `;
 
-    <div class="story">${data.story}</div>
-
-    <div class="question">${data.question}</div>
-
-    <ul class="choices">
-      <li onclick="checkAnswer(this, 'A', '${data.answer}')">A) ${data.choices.A}</li>
-      <li onclick="checkAnswer(this, 'B', '${data.answer}')">B) ${data.choices.B}</li>
-      <li onclick="checkAnswer(this, 'C', '${data.answer}')">C) ${data.choices.C}</li>
-      <li onclick="checkAnswer(this, 'D', '${data.answer}')">D) ${data.choices.D}</li>
-    </ul>
-
-    <div id="feedback" class="explanation" style="display:none;">
-      <strong>Açıklama:</strong> ${data.explanation}
-    </div>
-
-    <button style="margin-top:20px;" onclick="searchTopic()">
-      Yeni Soru Üret
-    </button>
-  </div>
-`;
       try {
         const response = await fetch("/generate", {
           method: "POST",
@@ -240,52 +193,50 @@
             <div class="question">${data.question}</div>
 
             <ul class="choices">
-              <li>A) ${data.choices.A}</li>
-              <li>B) ${data.choices.B}</li>
-              <li>C) ${data.choices.C}</li>
-              <li>D) ${data.choices.D}</li>
+              <li data-option="A">A) ${data.choices.A}</li>
+              <li data-option="B">B) ${data.choices.B}</li>
+              <li data-option="C">C) ${data.choices.C}</li>
+              <li data-option="D">D) ${data.choices.D}</li>
             </ul>
 
-            <div class="answer">
-              Doğru Cevap: ${data.answer}
+            <div id="feedback" class="explanation">
+              <strong>Açıklama:</strong> ${data.explanation}
             </div>
 
-            <div class="explanation">
-              ${data.explanation}
-            </div>
+            <button id="nextBtn" style="margin-top:20px;">Yeni Soru Üret</button>
           </div>
         `;
+
+        bindChoices(data.answer);
+        document.getElementById("nextBtn").addEventListener("click", searchTopic);
+
       } catch (err) {
         console.error(err);
-        resultDiv.innerHTML = `
-          <p style="color:red;">
-            İçerik yüklenemedi. Lütfen tekrar deneyin.
-          </p>
-        `;
+        resultDiv.innerHTML = `<p style="color:red;">Bir hata oluştu.</p>`;
       }
-      function checkAnswer(element, selected, correct) {
-  const choices = document.querySelectorAll(".choices li");
+    }
 
-  // Tüm şıkları kilitle (bir daha tıklanamasın)
-  choices.forEach(li => li.onclick = null);
+    function bindChoices(correctAnswer) {
+      const choices = document.querySelectorAll(".choices li");
 
-  if (selected === correct) {
-    element.classList.add("correct");
-  } else {
-    element.classList.add("wrong");
+      choices.forEach(choice => {
+        choice.addEventListener("click", () => {
+          choices.forEach(c => c.replaceWith(c.cloneNode(true)));
 
-    // Doğru şıkkı yeşil yap
-    choices.forEach(li => {
-      if (li.innerText.startsWith(correct)) {
-        li.classList.add("correct");
-      }
-    });
-  }
+          const selected = choice.dataset.option;
 
-  // Açıklamayı göster
-  document.getElementById("feedback").style.display = "block";
-}
+          if (selected === correctAnswer) {
+            choice.classList.add("correct");
+          } else {
+            choice.classList.add("wrong");
+            document
+              .querySelector(`.choices li[data-option="${correctAnswer}"]`)
+              ?.classList.add("correct");
+          }
 
+          document.getElementById("feedback").style.display = "block";
+        });
+      });
     }
   </script>
 </body>
