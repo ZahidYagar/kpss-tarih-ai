@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
 import os
@@ -62,5 +62,11 @@ def generate():
     result = generate_content_from_query(query)
     return jsonify(result)
 
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+@app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
