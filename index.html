@@ -10,12 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       background: #f6f7fb;
       margin: 0;
       padding: 0;
@@ -54,9 +52,7 @@
       outline: none;
     }
 
-    input:focus {
-      border-color: #6366f1;
-    }
+    input:focus { border-color: #6366f1; }
 
     button {
       padding: 14px 22px;
@@ -69,9 +65,7 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #4f46e5;
-    }
+    button:hover { background: #4f46e5; }
 
     .card {
       background: white;
@@ -79,12 +73,6 @@
       padding: 28px;
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-    }
-
-    .card h2 {
-      margin-top: 0;
-      font-size: 24px;
-      font-weight: 700;
     }
 
     .story {
@@ -130,22 +118,13 @@
     }
 
     @media (max-width: 600px) {
-      h1 {
-        font-size: 26px;
-      }
-
-      .search-box {
-        flex-direction: column;
-      }
-
-      button {
-        width: 100%;
-      }
+      .search-box { flex-direction: column; }
+      button { width: 100%; }
     }
   </style>
 </head>
-<body>
 
+<body>
   <div class="container">
     <h1>KPSS Tarih</h1>
     <p class="subtitle">
@@ -161,54 +140,59 @@
   </div>
 
   <script>
+    async function searchTopic() {
+      const query = document.getElementById("query").value.trim();
+      if (!query) {
+        alert("Lütfen bir konu yaz");
+        return;
+      }
 
-async function searchTopic() {
-  const query = document.getElementById("query").value.trim();
-  if (!query) {
-    alert("Lütfen bir konu yaz");
-    return;
-  }
+      const resultDiv = document.getElementById("result");
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
 
-  const resultDiv = document.getElementById("result");
-  resultDiv.style.display = "block";
-  resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
+      try {
+        const response = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query })
+        });
 
-  try {
-    console.log("Fetch başlıyor");
+        const data = await response.json();
 
-    const response = await fetch("/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ query })
-    });
+        resultDiv.innerHTML = `
+          <div class="card">
+            <h2>${data.topic}</h2>
 
-    console.log("Response geldi:", response.status);
+            <div class="story">${data.story}</div>
 
-    const data = await response.json();
-    console.log("JSON:", data);
+            <div class="question">${data.question}</div>
 
-    resultDiv.innerHTML = `
-      <div class="card">
-        <h2>${data.topic}</h2>
-        <div class="story">${data.story}</div>
-        <div class="question">${data.question}</div>
-      </div>
-    `;
+            <ul class="choices">
+              <li>A) ${data.choices.A}</li>
+              <li>B) ${data.choices.B}</li>
+              <li>C) ${data.choices.C}</li>
+              <li>D) ${data.choices.D}</li>
+            </ul>
 
-  } catch (err) {
-    console.error("HATA:", err);
-    resultDiv.innerHTML = `
-      <p style="color:red;">
-        İçerik yüklenemedi. Lütfen tekrar deneyin.
-      </p>
-    `;
-  }
-}
+            <div class="answer">
+              Doğru Cevap: ${data.answer}
+            </div>
 
-
+            <div class="explanation">
+              ${data.explanation}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = `
+          <p style="color:red;">
+            İçerik yüklenemedi. Lütfen tekrar deneyin.
+          </p>
+        `;
+      }
+    }
   </script>
-
 </body>
 </html>
