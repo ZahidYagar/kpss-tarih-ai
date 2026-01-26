@@ -121,6 +121,55 @@
       .search-box { flex-direction: column; }
       button { width: 100%; }
     }
+    .spinner {
+  width: 32px;
+  height: 32px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+/* Spinner */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Tıklanabilir şıklar */
+.choices li {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.choices li:hover {
+  background: #eef2ff;
+}
+
+.correct {
+  background: #dcfce7 !important;
+  color: #166534;
+  font-weight: 600;
+}
+
+.wrong {
+  background: #fee2e2 !important;
+  color: #991b1b;
+}
+
   </style>
 </head>
 
@@ -149,8 +198,30 @@
 
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
-      resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
+     resultDiv.innerHTML = `
+  <div class="card">
+    <h2>${data.topic}</h2>
 
+    <div class="story">${data.story}</div>
+
+    <div class="question">${data.question}</div>
+
+    <ul class="choices">
+      <li onclick="checkAnswer(this, 'A', '${data.answer}')">A) ${data.choices.A}</li>
+      <li onclick="checkAnswer(this, 'B', '${data.answer}')">B) ${data.choices.B}</li>
+      <li onclick="checkAnswer(this, 'C', '${data.answer}')">C) ${data.choices.C}</li>
+      <li onclick="checkAnswer(this, 'D', '${data.answer}')">D) ${data.choices.D}</li>
+    </ul>
+
+    <div id="feedback" class="explanation" style="display:none;">
+      <strong>Açıklama:</strong> ${data.explanation}
+    </div>
+
+    <button style="margin-top:20px;" onclick="searchTopic()">
+      Yeni Soru Üret
+    </button>
+  </div>
+`;
       try {
         const response = await fetch("/generate", {
           method: "POST",
@@ -192,6 +263,29 @@
           </p>
         `;
       }
+      function checkAnswer(element, selected, correct) {
+  const choices = document.querySelectorAll(".choices li");
+
+  // Tüm şıkları kilitle (bir daha tıklanamasın)
+  choices.forEach(li => li.onclick = null);
+
+  if (selected === correct) {
+    element.classList.add("correct");
+  } else {
+    element.classList.add("wrong");
+
+    // Doğru şıkkı yeşil yap
+    choices.forEach(li => {
+      if (li.innerText.startsWith(correct)) {
+        li.classList.add("correct");
+      }
+    });
+  }
+
+  // Açıklamayı göster
+  document.getElementById("feedback").style.display = "block";
+}
+
     }
   </script>
 </body>
