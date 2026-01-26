@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>KPSS Tarih | Akıllı Konu Anlatımı</title>
 
-  <!-- Google Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,17 +25,8 @@
       padding: 0 20px;
     }
 
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      color: #6b7280;
-      margin-bottom: 32px;
-      font-size: 16px;
-    }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .subtitle { color: #6b7280; margin-bottom: 32px; }
 
     .search-box {
       display: flex;
@@ -45,21 +35,19 @@
 
     input {
       flex: 1;
-      padding: 14px 16px;
-      font-size: 16px;
+      padding: 14px;
       border-radius: 10px;
       border: 1px solid #d1d5db;
-      outline: none;
+      font-size: 16px;
     }
 
     button {
       padding: 14px 22px;
-      font-size: 16px;
-      font-weight: 600;
       background: #6366f1;
       color: white;
       border: none;
       border-radius: 10px;
+      font-weight: 600;
       cursor: pointer;
     }
 
@@ -71,12 +59,7 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     }
 
-    .story {
-      margin: 20px 0;
-      white-space: pre-line;
-      line-height: 1.7;
-      color: #374151;
-    }
+    .story { margin: 20px 0; line-height: 1.7; }
 
     .question-block {
       margin-top: 24px;
@@ -84,15 +67,9 @@
       border-top: 1px solid #e5e7eb;
     }
 
-    .question {
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
+    .question { font-weight: 600; margin-bottom: 12px; }
 
-    .choices {
-      list-style: none;
-      padding: 0;
-    }
+    .choices { list-style: none; padding: 0; }
 
     .choices li {
       padding: 10px 12px;
@@ -100,23 +77,12 @@
       background: #f9fafb;
       margin-bottom: 8px;
       cursor: pointer;
-      transition: 0.2s;
     }
 
-    .choices li:hover {
-      background: #eef2ff;
-    }
+    .choices li:hover { background: #eef2ff; }
 
-    .correct {
-      background: #dcfce7 !important;
-      color: #166534;
-      font-weight: 600;
-    }
-
-    .wrong {
-      background: #fee2e2 !important;
-      color: #991b1b;
-    }
+    .correct { background: #dcfce7 !important; color: #166534; }
+    .wrong { background: #fee2e2 !important; color: #991b1b; }
 
     .explanation {
       display: none;
@@ -135,108 +101,144 @@
       margin: 20px auto;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <h1>KPSS Tarih</h1>
-    <p class="subtitle">Konuyu yaz, 5 soruluk mini deneme çöz.</p>
+<div class="container">
+  <h1>KPSS Tarih</h1>
+  <p class="subtitle">Konuyu yaz, 5 soruluk mini deneme çöz.</p>
 
-    <div class="search-box">
-      <input id="query" type="text" placeholder="Örn: İlk Türk-İslam Devletleri">
-      <button id="searchBtn">Getir</button>
-    </div>
-
-    <div id="result" style="display:none;"></div>
+  <div class="search-box">
+    <input id="query" placeholder="Örn: İlk Türk-İslam Devletleri">
+    <button id="searchBtn">Getir</button>
   </div>
 
-  <script>
-    let lastTopic = "";
-    let score = 0;
+  <div id="result" style="display:none;"></div>
+</div>
 
-    document.getElementById("searchBtn").addEventListener("click", searchTopic);
+<script>
+let lastTopic = "";
+let score = 0;
+let isLoading = false;
 
-    async function searchTopic() {
-      let query = document.getElementById("query").value.trim();
-      if (!query && lastTopic) query = lastTopic;
-      if (!query) return alert("Konu gir");
+document.getElementById("searchBtn").addEventListener("click", searchTopic);
 
-      lastTopic = query;
-      score = 0;
+async function searchTopic() {
+  if (isLoading) return;
+  isLoading = true;
 
-      const resultDiv = document.getElementById("result");
-      resultDiv.style.display = "block";
-      resultDiv.innerHTML = `<div class="spinner"></div>`;
+  let query = document.getElementById("query").value.trim();
+  if (!query && lastTopic) query = lastTopic;
+  if (!query) {
+    alert("Konu gir");
+    isLoading = false;
+    return;
+  }
 
-      const response = await fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query })
-      });
+  lastTopic = query;
+  score = 0;
 
-      const data = await response.json();
+  const resultDiv = document.getElementById("result");
+  resultDiv.style.display = "block";
+  resultDiv.innerHTML = `<div class="spinner"></div>`;
 
-      let questionsHtml = "";
+  try {
+    const response = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query })
+    });
 
-      data.questions.forEach((q, i) => {
-        questionsHtml += `
-          <div class="question-block" data-answer="${q.answer}">
-            <div class="question">${i + 1}. ${q.question}</div>
-            <ul class="choices">
-              ${Object.entries(q.choices).map(
-                ([key, val]) => `<li data-option="${key}">${key}) ${val}</li>`
-              ).join("")}
-            </ul>
-            <div class="explanation">
-              <strong>Doğru:</strong> ${q.answer} — ${q.explanation}
-            </div>
+    if (!response.ok) {
+      const err = await response.json();
+
+      if (err.error === "quota") {
+        resultDiv.innerHTML = `
+          <div class="card">
+            <p style="color:#b45309;font-weight:600;">
+              ⚠️ Günlük ücretsiz kullanım limiti doldu
+            </p>
+            <p style="color:#6b7280;">1–2 dakika sonra tekrar dene.</p>
           </div>
         `;
-      });
+        isLoading = false;
+        return;
+      }
 
-      resultDiv.innerHTML = `
-        <div class="card">
-          <h2>${data.topic}</h2>
-          <div class="story">${data.story}</div>
-          ${questionsHtml}
-          <p id="score" style="margin-top:20px;font-weight:600;"></p>
+      throw new Error("Sunucu hatası");
+    }
+
+    const data = await response.json();
+
+    let questionsHtml = "";
+    data.questions.forEach((q, i) => {
+      questionsHtml += `
+        <div class="question-block" data-answer="${q.answer}">
+          <div class="question">${i + 1}. ${q.question}</div>
+          <ul class="choices">
+            ${Object.entries(q.choices).map(
+              ([k, v]) => `<li data-option="${k}">${k}) ${v}</li>`
+            ).join("")}
+          </ul>
+          <div class="explanation">
+            <strong>Doğru:</strong> ${q.answer} — ${q.explanation}
+          </div>
         </div>
       `;
+    });
 
-      bindAllQuestions();
-    }
+    resultDiv.innerHTML = `
+      <div class="card">
+        <h2>${data.topic}</h2>
+        <div class="story">${data.story}</div>
+        ${questionsHtml}
+        <p id="score" style="margin-top:20px;font-weight:600;"></p>
+      </div>
+    `;
 
-    function bindAllQuestions() {
-      document.querySelectorAll(".question-block").forEach(block => {
-        const correct = block.dataset.answer;
-        const explanation = block.querySelector(".explanation");
+    bindAllQuestions();
 
-        block.querySelectorAll("li").forEach(li => {
-          li.addEventListener("click", () => {
-            if (block.classList.contains("done")) return;
-            block.classList.add("done");
+  } catch (err) {
+    console.error(err);
+    resultDiv.innerHTML = `
+      <div class="card">
+        <p style="color:red;">Bağlantı hatası oluştu.</p>
+      </div>
+    `;
+  }
 
-            const selected = li.dataset.option;
-            if (selected === correct) {
-              li.classList.add("correct");
-              score++;
-            } else {
-              li.classList.add("wrong");
-              block.querySelector(`li[data-option="${correct}"]`)
-                ?.classList.add("correct");
-            }
+  isLoading = false;
+}
 
-            explanation.style.display = "block";
-            document.getElementById("score").innerText =
-              `Skor: ${score} / 5`;
-          });
-        });
+function bindAllQuestions() {
+  document.querySelectorAll(".question-block").forEach(block => {
+    const correct = block.dataset.answer;
+    const explanation = block.querySelector(".explanation");
+
+    block.querySelectorAll("li").forEach(li => {
+      li.addEventListener("click", () => {
+        if (block.classList.contains("done")) return;
+        block.classList.add("done");
+
+        const selected = li.dataset.option;
+        if (selected === correct) {
+          li.classList.add("correct");
+          score++;
+        } else {
+          li.classList.add("wrong");
+          block.querySelector(`li[data-option="${correct}"]`)
+            ?.classList.add("correct");
+        }
+
+        explanation.style.display = "block";
+        document.getElementById("score").innerText =
+          `Skor: ${score} / 5`;
       });
-    }
-  </script>
+    });
+  });
+}
+</script>
 </body>
 </html>
