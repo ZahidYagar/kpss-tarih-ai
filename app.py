@@ -4,16 +4,14 @@ print("ENV TEST →", os.getenv("GEMINI_API_KEY"))
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
-import os
 import json
 import re
 
-# Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Gemini client
-client = genai.Client(api_key=os.getenv("AIzaSyCl5yG6YzC3yPJrFtKk-b7OqWEQ9N5kpLI"))
+# ✅ DOĞRU GEMINI CLIENT
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 def empty_response():
@@ -25,10 +23,6 @@ def empty_response():
 
 
 def safe_json_parse(text):
-    """
-    Gemini bazen JSON dışı metin ekleyebilir.
-    Sadece ilk JSON bloğunu yakalar.
-    """
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
         return empty_response()
@@ -99,11 +93,10 @@ def generate():
     except Exception as e:
         error_msg = str(e)
 
-        # Gemini quota dolduysa
         if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
             return jsonify({
                 "error": "quota",
-                "message": "Günlük ücretsiz kullanım limiti doldu. Lütfen biraz sonra tekrar deneyin."
+                "message": "Kullanım limiti doldu. Lütfen biraz sonra tekrar deneyin."
             }), 429
 
         return jsonify({
@@ -111,15 +104,12 @@ def generate():
             "message": "Sunucu hatası oluştu."
         }), 500
 
+
 @app.route("/ping")
 def ping():
     return "pong"
 
+
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
