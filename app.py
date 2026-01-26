@@ -20,36 +20,28 @@ def safe_json_parse(text):
     """
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
-        return {
-            "topic": "",
-            "story": "",
-            "question": "",
-            "choices": {
-                "A": "",
-                "B": "",
-                "C": "",
-                "D": ""
-            },
-            "answer": "",
-            "explanation": ""
-        }
+        return empty_response()
 
     try:
         return json.loads(match.group())
     except json.JSONDecodeError:
-        return {
-            "topic": "",
-            "story": "",
-            "question": "",
-            "choices": {
-                "A": "",
-                "B": "",
-                "C": "",
-                "D": ""
-            },
-            "answer": "",
-            "explanation": ""
-        }
+        return empty_response()
+
+
+def empty_response():
+    return {
+        "topic": "",
+        "story": "",
+        "question": "",
+        "choices": {
+            "A": "",
+            "B": "",
+            "C": "",
+            "D": ""
+        },
+        "answer": "",
+        "explanation": ""
+    }
 
 
 def generate_content_from_query(user_query):
@@ -96,10 +88,30 @@ def generate():
     query = data.get("query")
 
     if not query:
-        return jsonify({"error": "query boş"}), 400
+        return jsonify({
+            "error": "bad_request",
+            "message": "query boş"
+        }), 400
 
-    result = generate_content_from_query(query)
-    return jsonify(result)
+    try:
+        result = generate_content_from_query(query)
+        return jsonify(result)
+
+    except Exception as e:
+        error_msg = str(e)
+
+        # Gemini quota dolduysa
+        if "RESOURCE_EXHAUSTED" in error_msg or "429" in error_msg:
+            return jsonify({
+                "error": "quota",
+                "message": "Günlük ücretsiz kullanım limiti doldu. Lütfen biraz sonra tekrar deneyin."
+            }), 429
+
+        # Diğer hatalar
+        return jsonify({
+            "error": "server",
+            "message": "Sunucu hatası oluştu."
+        }), 500
 
 
 @app.route("/")
