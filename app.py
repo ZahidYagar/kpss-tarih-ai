@@ -10,7 +10,7 @@ import re
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Gemini client
+# Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -23,21 +23,33 @@ def empty_response(topic=""):
 
 
 def safe_json_parse(text, topic=""):
+    """
+    Gemini'den gelen bozuk JSON'u:
+    - temizler
+    - onarmaya çalışır
+    - olmazsa None döner (retry için)
+    """
     if not text:
-        return empty_response(topic)
+        return None
 
     cleaned = text.strip()
+    cleaned = cleaned.replace("```json", "").replace("```", "").strip()
 
-    if cleaned.startswith("```"):
-        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
-
-    match = re.search(r"\{[\s\S]*?\}", cleaned)
+    # En geniş JSON bloğunu al
+    match = re.search(r"\{[\s\S]*\}", cleaned)
     if not match:
-        print("JSON PARSE FAIL → RAW:", text)
-        return empty_response(topic)
+        print("JSON BLOCK NOT FOUND")
+        return None
+
+    raw_json = match.group()
+
+    # 🔧 Yaygın LLM JSON hatalarını onar
+    raw_json = re.sub(r'"\s*\n\s*"', '",\n"', raw_json)   # eksik virgül
+    raw_json = re.sub(r',\s*}', '}', raw_json)
+    raw_json = re.sub(r',\s*]', ']', raw_json)
 
     try:
-        data = json.loads(match.group())
+        data = json.loads(raw_json)
 
         data["topic"] = data.get("topic", topic)
         data["story"] = data.get("story", "")
@@ -49,51 +61,60 @@ def safe_json_parse(text, topic=""):
         return data
 
     except Exception as e:
-        print("JSON LOAD ERROR:", e)
-        print("RAW TEXT:", text)
-        return empty_response(topic)
+        print("JSON STILL BROKEN:", e)
+        print("RAW JSON:", raw_json)
+        return None
 
 
 def generate_content_from_query(user_query):
     prompt = f"""
-Sen KPSS Tarih uzmanı bir eğitmendsin.
+SADECE JSON ÜRET.
+AÇIKLAMA YAZMA.
+KOD BLOĞU KULLANMA.
 
-Konu: {user_query}
-
-Görevlerin:
-1. Konuyu KPSS dilinde, en fazla 250 kelimeyle hikâyeleştirerek anlat.
-2. Ardından AYNI KONUDAN **5 adet KPSS formatında soru** üret.
-3. Her soru 4 şıklı (A, B, C, D) olsun.
-4. Her soru için doğru cevabı ve kısa bir açıklama yaz.
-
-ÇIKTIYI SADECE aşağıdaki JSON formatında ver.
-Başka hiçbir metin yazma.
+ŞEMA DIŞINA ÇIKMA:
 
 {{
   "topic": "{user_query}",
-  "story": "",
+  "story": "string",
   "questions": [
     {{
-      "question": "",
+      "question": "string",
       "choices": {{
-        "A": "",
-        "B": "",
-        "C": "",
-        "D": ""
+        "A": "string",
+        "B": "string",
+        "C": "string",
+        "D": "string"
       }},
-      "answer": "",
-      "explanation": ""
+      "answer": "A|B|C|D",
+      "explanation": "string"
     }}
   ]
 }}
+
+KURALLAR:
+- story BOŞ OLAMAZ
+- questions TAM 5 ADET OLMAK ZORUNDA
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
+    # 🔁 RETRY MEKANİZMASI
+    for attempt in range(3):
+        print(f"LLM ATTEMPT {attempt + 1}")
 
-    return safe_json_parse(response.text, user_query)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        parsed = safe_json_parse(response.text, user_query)
+
+        if parsed and parsed.get("questions"):
+            return parsed
+
+        print("RETRY NEEDED")
+
+    # 3 deneme de başarısızsa
+    return empty_response(user_query)
 
 
 @app.route("/generate", methods=["POST"])
@@ -107,11 +128,7 @@ def generate():
     try:
         result = generate_content_from_query(query)
 
-        # ✅ DEBUG DOĞRU YERDE
-        print("RAW RESULT →", result)
-
-        if not result or not isinstance(result.get("questions"), list):
-            result = empty_response(query)
+        print("FINAL RESULT →", result)
 
         return jsonify(result), 200
 
