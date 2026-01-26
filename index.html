@@ -161,44 +161,53 @@
   </div>
 
   <script>
-    async function searchTopic() {
-      const query = document.getElementById("query").value.trim();
-      if (!query) {
-        alert("Lütfen bir konu yaz");
-        return;
-      }
 
-      const resultDiv = document.getElementById("result");
-      resultDiv.style.display = "block";
-      resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
+async function searchTopic() {
+  const query = document.getElementById("query").value.trim();
+  if (!query) {
+    alert("Lütfen bir konu yaz");
+    return;
+  }
 
-      const response = await fetch("http://localhost:5000/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query })
-      });
+  const resultDiv = document.getElementById("result");
+  resultDiv.style.display = "block";
+  resultDiv.innerHTML = `<p class="loading">İçerik hazırlanıyor...</p>`;
 
-      const data = await response.json();
+  try {
+    console.log("Fetch başlıyor");
 
-      resultDiv.innerHTML = `
-        <div class="card">
-          <h2>${data.topic}</h2>
+    const response = await fetch("/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query })
+    });
 
-          <div class="story">${data.story}</div>
+    console.log("Response geldi:", response.status);
 
-          <div class="question">${data.question}</div>
-          <ul class="choices">
-            <li>A) ${data.choices.A}</li>
-            <li>B) ${data.choices.B}</li>
-            <li>C) ${data.choices.C}</li>
-            <li>D) ${data.choices.D}</li>
-          </ul>
+    const data = await response.json();
+    console.log("JSON:", data);
 
-          <div class="answer">Doğru Cevap: ${data.answer}</div>
-          <div class="explanation">${data.explanation}</div>
-        </div>
-      `;
-    }
+    resultDiv.innerHTML = `
+      <div class="card">
+        <h2>${data.topic}</h2>
+        <div class="story">${data.story}</div>
+        <div class="question">${data.question}</div>
+      </div>
+    `;
+
+  } catch (err) {
+    console.error("HATA:", err);
+    resultDiv.innerHTML = `
+      <p style="color:red;">
+        İçerik yüklenemedi. Lütfen tekrar deneyin.
+      </p>
+    `;
+  }
+}
+
+
   </script>
 
 </body>
