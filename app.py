@@ -1,9 +1,9 @@
 import os
+import json
+import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
-import json
-import re
 
 # ======================
 # APP CONFIG
@@ -29,14 +29,8 @@ def empty_response(topic=""):
 
 
 def safe_json_parse(text, topic=""):
-    """
-    🔒 GARANTİLİ PARSE
-    - JSON düzgünse: full içerik
-    - JSON bozuksa: story KURTARILIR
-    - Her durumda frontend boş kalmaz
-    """
     if not text:
-        return empty_response(topic)
+        return None
 
     cleaned = (
         text.replace("```json", "")
@@ -44,47 +38,39 @@ def safe_json_parse(text, topic=""):
             .strip()
     )
 
-    # JSON bloğunu yakala (non-greedy)
-    match = re.search(r"\{[\s\S]*?\}", cleaned)
+    # JSON'u güvenli şekilde yakala
+    match = re.search(r"\{[\s\S]*\}", cleaned)
     if not match:
-        print("JSON BLOCK NOT FOUND")
-        return {
-            "topic": topic,
-            "story": cleaned[:2000],  # 🔥 ham metinden özet kurtarma
-            "questions": []
-        }
+        return None
 
     raw = match.group()
 
-    # Yaygın LLM JSON hatalarını temizle
+    # Yaygın JSON hatalarını düzelt
     raw = re.sub(r',\s*}', '}', raw)
     raw = re.sub(r',\s*]', ']', raw)
 
     try:
         data = json.loads(raw)
 
+        story = data.get("story", "")
+        questions = data.get("questions", [])
+
+        # 🔐 Guard'lar
+        if not isinstance(story, str) or len(story.split()) < 180:
+            return None
+
+        if not isinstance(questions, list) or len(questions) < 5:
+            return None
+
         return {
             "topic": data.get("topic", topic),
-            "story": data.get("story", ""),
-            "questions": data.get("questions", []) if isinstance(data.get("questions"), list) else []
+            "story": story,
+            "questions": questions
         }
 
     except Exception as e:
-        print("JSON BROKEN → STORY RECOVERY MODE:", e)
-
-        # 🔥 STORY'Yİ ZORLA KURTAR
-        story_match = re.search(
-            r'"story"\s*:\s*"([\s\S]*?)"\s*,\s*"questions"',
-            raw
-        )
-
-        story = story_match.group(1) if story_match else cleaned[:2000]
-
-        return {
-            "topic": topic,
-            "story": story,
-            "questions": []
-        }
+        print("JSON PARSE ERROR:", e)
+        return None
 
 
 # ======================
@@ -93,34 +79,28 @@ def safe_json_parse(text, topic=""):
 def generate_content_from_query(user_query):
     prompt = f"""
 SADECE JSON ÜRET.
-AÇIKLAMA, BAŞLIK, MADDE, KOD BLOĞU KULLANMA.
+KESİNLİKLE YARIM BIRAKMA.
+JSON TAMAMLAMADAN DURMA.
 
-SEN KPSS TARİH ALANINDA UZMAN, SORU YAZARI BİR EĞİTMENSİN.
+SEN KPSS TARİH ALANINDA KİTAP YAZARI VE SORU YAZARI BİR EĞİTMENSİN.
 
 KONU: {user_query}
 
-AMAÇ:
-- KPSS’de çıkan YORUM ve ANALİZ ağırlıklı sorular üret
-- Ezberle çözülemeyen sorular yaz
-- En az iki bilgiyi ilişkilendir
-- Şıklar bilerek birbirine yakın (çeldirici)
-
-STORY KURALLARI:
-- 250–320 kelime
+STORY:
+- 250–350 kelime
 - KPSS kitap dili
-- Sebep–sonuç ilişkisi
+- Sebep–sonuç
 - Kronolojik akış
-- Gereksiz uzatma YAPMA
+- Giriş → gelişme → sonuç
 
 SORULAR:
 - TAM 5 ADET
-- KPSS dili
+- Yorum ve analiz ağırlıklı
+- Ezberle çözülemez
+- Şıklar birbirine yakın
 - “Hangisi söylenemez?”, “Bu durumun sonucu nedir?” tarzı
-- explanation:
-  - neden doğru
-  - neden diğerleri yanlış (kısa)
 
-FORMAT DIŞINA ÇIKMA:
+FORMAT DIŞINA ASLA ÇIKMA:
 
 {{
   "topic": "{user_query}",
@@ -141,15 +121,24 @@ FORMAT DIŞINA ÇIKMA:
 }}
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config={
-            "max_output_tokens": 1200
-        }
-    )
+    # 🔁 RETRY MEKANİZMASI (3 deneme)
+    for attempt in range(3):
+        print(f"LLM ATTEMPT → {attempt + 1}")
 
-    return safe_json_parse(response.text, user_query)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config={"max_output_tokens": 1400}
+        )
+
+        parsed = safe_json_parse(response.text, user_query)
+
+        if parsed:
+            return parsed
+
+        print("RETRY...")
+
+    return empty_response(user_query)
 
 
 # ======================
@@ -183,7 +172,7 @@ def index():
 
 
 # ======================
-# LOCAL RUN
+# LOCAL / PROD RUN
 # ======================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
