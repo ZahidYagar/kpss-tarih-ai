@@ -76,7 +76,10 @@ AMAÇ:
 - "Hangisi söylenemez?", "Bu durumun sonucu nedir?" tarzı sorular tercih et.
 
 ZORUNLU KURALLAR:
-- story: sebep–sonuç ilişkisi kuran kısa anlatım (BOŞ OLAMAZ)
+- story:   **250–350 kelime** olacak
+- KPSS kitap dili kullan
+- Sebep–sonuç ilişkisi kur
+- Kronolojik akışa dikkat et
 - questions: TAM 5 ADET OLMAK ZORUNDA
 - Her soru:
   - yorum gerektirsin
