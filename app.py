@@ -76,7 +76,7 @@ AMAÇ:
 - "Hangisi söylenemez?", "Bu durumun sonucu nedir?" tarzı sorular tercih et.
 
 ZORUNLU KURALLAR:
-- story: - En az **350–450 kelime** olacak
+- story: - En fazla **400 kelime** olacak
 - KPSS kitap dili kullan
 - Sebep–sonuç ilişkisi kur
 - Kronolojik akışa dikkat et
