@@ -29,8 +29,14 @@ def empty_response(topic=""):
 
 
 def safe_json_parse(text, topic=""):
+    """
+    🔒 GARANTİLİ PARSE
+    - JSON düzgünse: full içerik
+    - JSON bozuksa: story KURTARILIR
+    - Her durumda frontend boş kalmaz
+    """
     if not text:
-        return None
+        return empty_response(topic)
 
     cleaned = (
         text.replace("```json", "")
@@ -38,32 +44,47 @@ def safe_json_parse(text, topic=""):
             .strip()
     )
 
-    # 🔑 Non-greedy JSON yakalama (RAM dostu)
+    # JSON bloğunu yakala (non-greedy)
     match = re.search(r"\{[\s\S]*?\}", cleaned)
     if not match:
-        return None
+        print("JSON BLOCK NOT FOUND")
+        return {
+            "topic": topic,
+            "story": cleaned[:2000],  # 🔥 ham metinden özet kurtarma
+            "questions": []
+        }
 
-    raw_json = match.group()
+    raw = match.group()
 
-    # Yaygın LLM JSON hatalarını onar
-    raw_json = re.sub(r',\s*}', '}', raw_json)
-    raw_json = re.sub(r',\s*]', ']', raw_json)
+    # Yaygın LLM JSON hatalarını temizle
+    raw = re.sub(r',\s*}', '}', raw)
+    raw = re.sub(r',\s*]', ']', raw)
 
     try:
-        data = json.loads(raw_json)
+        data = json.loads(raw)
 
-        data["topic"] = data.get("topic", topic)
-        data["story"] = data.get("story", "")
-        data["questions"] = data.get("questions", [])
-
-        if not isinstance(data["questions"], list):
-            data["questions"] = []
-
-        return data
+        return {
+            "topic": data.get("topic", topic),
+            "story": data.get("story", ""),
+            "questions": data.get("questions", []) if isinstance(data.get("questions"), list) else []
+        }
 
     except Exception as e:
-        print("JSON PARSE ERROR:", e)
-        return None
+        print("JSON BROKEN → STORY RECOVERY MODE:", e)
+
+        # 🔥 STORY'Yİ ZORLA KURTAR
+        story_match = re.search(
+            r'"story"\s*:\s*"([\s\S]*?)"\s*,\s*"questions"',
+            raw
+        )
+
+        story = story_match.group(1) if story_match else cleaned[:2000]
+
+        return {
+            "topic": topic,
+            "story": story,
+            "questions": []
+        }
 
 
 # ======================
@@ -120,7 +141,6 @@ FORMAT DIŞINA ÇIKMA:
 }}
 """
 
-    # 🔥 TEK DENEME – RAM SAFE
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
@@ -129,8 +149,7 @@ FORMAT DIŞINA ÇIKMA:
         }
     )
 
-    parsed = safe_json_parse(response.text, user_query)
-    return parsed if parsed else empty_response(user_query)
+    return safe_json_parse(response.text, user_query)
 
 
 # ======================
