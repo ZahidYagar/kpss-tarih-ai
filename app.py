@@ -23,19 +23,12 @@ def empty_response(topic=""):
 
 
 def safe_json_parse(text, topic=""):
-    """
-    Gemini'den gelen bozuk JSON'u:
-    - temizler
-    - onarmaya çalışır
-    - olmazsa None döner (retry için)
-    """
     if not text:
         return None
 
     cleaned = text.strip()
     cleaned = cleaned.replace("```json", "").replace("```", "").strip()
 
-    # En geniş JSON bloğunu al
     match = re.search(r"\{[\s\S]*\}", cleaned)
     if not match:
         print("JSON BLOCK NOT FOUND")
@@ -43,8 +36,8 @@ def safe_json_parse(text, topic=""):
 
     raw_json = match.group()
 
-    # 🔧 Yaygın LLM JSON hatalarını onar
-    raw_json = re.sub(r'"\s*\n\s*"', '",\n"', raw_json)   # eksik virgül
+    # LLM kaynaklı yaygın JSON hatalarını onar
+    raw_json = re.sub(r'"\s*\n\s*"', '",\n"', raw_json)
     raw_json = re.sub(r',\s*}', '}', raw_json)
     raw_json = re.sub(r',\s*]', ']', raw_json)
 
@@ -72,7 +65,28 @@ SADECE JSON ÜRET.
 AÇIKLAMA YAZMA.
 KOD BLOĞU KULLANMA.
 
-ŞEMA DIŞINA ÇIKMA:
+SEN KPSS TARİH ALANINDA UZMAN, SORU YAZARI BİR EĞİTMENSİN.
+
+KONU: {user_query}
+
+AMAÇ:
+- KPSS’de çıkan YORUM ve ANALİZ ağırlıklı sorular üret.
+- Ezberle çözülemeyen, en az iki bilgiyi ilişkilendiren sorular yaz.
+- Şıklar birbirine bilerek yakın ve çeldirici olsun.
+- "Hangisi söylenemez?", "Bu durumun sonucu nedir?" tarzı sorular tercih et.
+
+ZORUNLU KURALLAR:
+- story: sebep–sonuç ilişkisi kuran kısa anlatım (BOŞ OLAMAZ)
+- questions: TAM 5 ADET OLMAK ZORUNDA
+- Her soru:
+  - yorum gerektirsin
+  - KPSS dili kullansın
+  - şıklar mantıklı ve yakın olsun
+- explanation:
+  - neden doğru
+  - neden diğerleri yanlış (kısa)
+
+ŞEMA DIŞINA ASLA ÇIKMA:
 
 {{
   "topic": "{user_query}",
@@ -91,10 +105,6 @@ KOD BLOĞU KULLANMA.
     }}
   ]
 }}
-
-KURALLAR:
-- story BOŞ OLAMAZ
-- questions TAM 5 ADET OLMAK ZORUNDA
 """
 
     # 🔁 RETRY MEKANİZMASI
@@ -113,7 +123,6 @@ KURALLAR:
 
         print("RETRY NEEDED")
 
-    # 3 deneme de başarısızsa
     return empty_response(user_query)
 
 
@@ -127,9 +136,7 @@ def generate():
 
     try:
         result = generate_content_from_query(query)
-
         print("FINAL RESULT →", result)
-
         return jsonify(result), 200
 
     except Exception as e:
