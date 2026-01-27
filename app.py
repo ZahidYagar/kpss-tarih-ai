@@ -1,19 +1,25 @@
 import os
-print("ENV TEST →", os.getenv("GEMINI_API_KEY"))
-
+import json
+import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google import genai
-import json
-import re
 
+# ======================
+# APP CONFIG
+# ======================
 app = Flask(__name__)
 CORS(app)
 
-# Gemini client
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+print("ENV TEST →", bool(os.getenv("GEMINI_API_KEY")))
 
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
+# ======================
+# HELPERS
+# ======================
 def empty_response(topic=""):
     return {
         "topic": topic,
@@ -26,70 +32,75 @@ def safe_json_parse(text, topic=""):
     if not text:
         return None
 
-    cleaned = text.strip()
-    cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+    cleaned = (
+        text.replace("```json", "")
+            .replace("```", "")
+            .strip()
+    )
 
+    # JSON'u güvenli şekilde yakala
     match = re.search(r"\{[\s\S]*\}", cleaned)
     if not match:
-        print("JSON BLOCK NOT FOUND")
         return None
 
-    raw_json = match.group()
+    raw = match.group()
 
-    # LLM kaynaklı yaygın JSON hatalarını onar
-    raw_json = re.sub(r'"\s*\n\s*"', '",\n"', raw_json)
-    raw_json = re.sub(r',\s*}', '}', raw_json)
-    raw_json = re.sub(r',\s*]', ']', raw_json)
+    # Yaygın JSON hatalarını düzelt
+    raw = re.sub(r',\s*}', '}', raw)
+    raw = re.sub(r',\s*]', ']', raw)
 
     try:
-        data = json.loads(raw_json)
+        data = json.loads(raw)
 
-        data["topic"] = data.get("topic", topic)
-        data["story"] = data.get("story", "")
-        data["questions"] = data.get("questions", [])
+        story = data.get("story", "")
+        questions = data.get("questions", [])
 
-        if not isinstance(data["questions"], list):
-            data["questions"] = []
+        # 🔐 Guard'lar
+        if not isinstance(story, str) or len(story.split()) < 180:
+            return None
 
-        return data
+        if not isinstance(questions, list) or len(questions) < 5:
+            return None
+
+        return {
+            "topic": data.get("topic", topic),
+            "story": story,
+            "questions": questions
+        }
 
     except Exception as e:
-        print("JSON STILL BROKEN:", e)
-        print("RAW JSON:", raw_json)
+        print("JSON PARSE ERROR:", e)
         return None
 
 
+# ======================
+# LLM CALL
+# ======================
 def generate_content_from_query(user_query):
     prompt = f"""
 SADECE JSON ÜRET.
-AÇIKLAMA YAZMA.
-KOD BLOĞU KULLANMA.
+KESİNLİKLE YARIM BIRAKMA.
+JSON TAMAMLAMADAN DURMA.
 
-SEN KPSS TARİH ALANINDA UZMAN, SORU YAZARI BİR EĞİTMENSİN.
+SEN KPSS TARİH ALANINDA KİTAP YAZARI VE SORU YAZARI BİR EĞİTMENSİN.
 
 KONU: {user_query}
 
-AMAÇ:
-- KPSS’de çıkan YORUM ve ANALİZ ağırlıklı sorular üret.
-- Ezberle çözülemeyen, en az iki bilgiyi ilişkilendiren sorular yaz.
-- Şıklar birbirine bilerek yakın ve çeldirici olsun.
-- "Hangisi söylenemez?", "Bu durumun sonucu nedir?" tarzı sorular tercih et.
+STORY:
+- 250–350 kelime
+- KPSS kitap dili
+- Sebep–sonuç
+- Kronolojik akış
+- Giriş → gelişme → sonuç
 
-ZORUNLU KURALLAR:
-- story:   **250–350 kelime** olacak
-- KPSS kitap dili kullan
-- Sebep–sonuç ilişkisi kur
-- Kronolojik akışa dikkat et
-- questions: TAM 5 ADET OLMAK ZORUNDA
-- Her soru:
-  - yorum gerektirsin
-  - KPSS dili kullansın
-  - şıklar mantıklı ve yakın olsun
-- explanation:
-  - neden doğru
-  - neden diğerleri yanlış (kısa)
+SORULAR:
+- TAM 5 ADET
+- Yorum ve analiz ağırlıklı
+- Ezberle çözülemez
+- Şıklar birbirine yakın
+- “Hangisi söylenemez?”, “Bu durumun sonucu nedir?” tarzı
 
-ŞEMA DIŞINA ASLA ÇIKMA:
+FORMAT DIŞINA ASLA ÇIKMA:
 
 {{
   "topic": "{user_query}",
@@ -110,25 +121,29 @@ ZORUNLU KURALLAR:
 }}
 """
 
-    # 🔁 RETRY MEKANİZMASI
+    # 🔁 RETRY MEKANİZMASI (3 deneme)
     for attempt in range(3):
-        print(f"LLM ATTEMPT {attempt + 1}")
+        print(f"LLM ATTEMPT → {attempt + 1}")
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=prompt
+            contents=prompt,
+            config={"max_output_tokens": 1400}
         )
 
         parsed = safe_json_parse(response.text, user_query)
 
-        if parsed and parsed.get("questions"):
+        if parsed:
             return parsed
 
-        print("RETRY NEEDED")
+        print("RETRY...")
 
     return empty_response(user_query)
 
 
+# ======================
+# ROUTES
+# ======================
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json(silent=True)
@@ -139,11 +154,10 @@ def generate():
 
     try:
         result = generate_content_from_query(query)
-        print("FINAL RESULT →", result)
         return jsonify(result), 200
 
     except Exception as e:
-        print("BACKEND ERROR:", str(e))
+        print("BACKEND ERROR:", e)
         return jsonify(empty_response(query)), 200
 
 
@@ -155,3 +169,11 @@ def ping():
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
+
+
+# ======================
+# LOCAL / PROD RUN
+# ======================
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
