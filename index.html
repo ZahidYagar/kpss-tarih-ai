@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KPSS Tarih | Akıllı Soru & Konu Anlatımı</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9,89 +10,142 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
+    /* ===== RESET ===== */
     * { box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: linear-gradient(180deg, #f8fafc, #eef2ff);
       margin: 0;
-      color: #1f2937;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #111827;
     }
 
+    /* ===== LAYOUT ===== */
     .container {
-      max-width: 860px;
-      margin: 60px auto;
-      padding: 0 20px;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
     }
 
-    .hero { text-align: center; margin-bottom: 40px; }
-    .hero h1 { font-size: 36px; margin-bottom: 10px; }
-    .hero p { color: #6b7280; }
-    .divider {
-      width: 60px; height: 4px; background: #6366f1;
-      border-radius: 999px; margin: 24px auto;
+    /* ===== HEADER ===== */
+    .hero {
+      text-align: center;
+      margin-bottom: 24px;
     }
 
-    .search-box { display: flex; gap: 12px; }
+    .hero h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .hero p {
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    /* ===== SEARCH ===== */
+    .search-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
     input {
-      flex: 1; padding: 14px 16px; font-size: 16px;
-      border-radius: 12px; border: 1px solid #d1d5db;
+      padding: 14px 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      outline: none;
     }
+
     button {
-      padding: 14px 24px; font-weight: 600;
-      background: #6366f1; color: white;
-      border: none; border-radius: 12px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 12px;
       cursor: pointer;
     }
 
+    /* ===== CARD ===== */
     .card {
-      background: white; margin-top: 40px; padding: 32px;
-      border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      background: white;
+      padding: 20px;
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
     }
 
-    .story { margin: 20px 0 30px; line-height: 1.8; }
+    .story {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 24px;
+      color: #374151;
+    }
 
+    /* ===== QUESTIONS ===== */
     .question-block {
-      margin-bottom: 28px; padding-top: 20px;
+      margin-bottom: 26px;
+      padding-top: 18px;
       border-top: 1px solid #e5e7eb;
     }
 
-    .choices { list-style: none; padding: 0; }
+    .question {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .choices {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
     .choices li {
-      padding: 12px 14px;
-      border-radius: 10px;
+      padding: 14px;
+      border-radius: 12px;
       background: #f9fafb;
       margin-bottom: 10px;
       cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .choices li:hover {
-      background: #eef2ff;
+      font-size: 15px;
+      border: 2px solid transparent;
     }
 
     .correct {
-      background: #dcfce7 !important;
+      background: #dcfce7;
+      border-color: #22c55e;
       color: #166534;
       font-weight: 600;
     }
 
     .wrong {
-      background: #fee2e2 !important;
+      background: #fee2e2;
+      border-color: #ef4444;
       color: #991b1b;
     }
 
     .explanation {
       display: none;
       margin-top: 10px;
-      font-size: 14px;
+      font-size: 13px;
       color: #6b7280;
     }
 
+    #score {
+      margin-top: 20px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    /* ===== SPINNER ===== */
     .spinner {
-      width: 34px; height: 34px;
+      width: 36px;
+      height: 36px;
       border: 4px solid #e5e7eb;
       border-top: 4px solid #6366f1;
       border-radius: 50%;
@@ -99,7 +153,15 @@
       margin: 40px auto;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ===== DESKTOP ===== */
+    @media (min-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .container { padding: 40px 20px 100px; }
+    }
   </style>
 </head>
 
@@ -107,12 +169,11 @@
   <div class="container">
     <div class="hero">
       <h1>KPSS Tarih</h1>
-      <p>Konuyu yaz, yapay zekâ KPSS düzeyinde anlatsın ve sorularla ölç.</p>
-      <div class="divider"></div>
+      <p>Konuyu yaz, analiz ağırlıklı sorularla kendini dene.</p>
     </div>
 
     <div class="search-box">
-      <input id="query" type="text" placeholder="Örn: İlk Türk-İslam Devletleri">
+      <input id="query" placeholder="Örn: Lale Devri">
       <button id="searchBtn">Getir</button>
     </div>
 
@@ -121,47 +182,41 @@
 
 <script>
 let score = 0;
-let isLoading = false;
+let loading = false;
 
 document.getElementById("searchBtn").addEventListener("click", searchTopic);
 
 async function searchTopic() {
-  if (isLoading) return;
-  isLoading = true;
+  if (loading) return;
+  loading = true;
   score = 0;
 
   const query = document.getElementById("query").value.trim();
-  if (!query) {
-    alert("Konu gir");
-    isLoading = false;
-    return;
-  }
+  if (!query) { alert("Konu gir"); loading=false; return; }
 
   const resultDiv = document.getElementById("result");
   resultDiv.innerHTML = `<div class="spinner"></div>`;
 
   try {
-    const response = await fetch("/generate", {
+    const res = await fetch("/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query })
     });
 
-    const data = await response.json();
+    const data = await res.json();
 
-    let html = "";
-    data.questions.forEach((q, i) => {
-      html += `
+    let qHtml = "";
+    data.questions.forEach((q,i)=>{
+      qHtml += `
         <div class="question-block" data-answer="${q.answer}">
-          <div><strong>${i + 1}. ${q.question}</strong></div>
+          <div class="question">${i+1}. ${q.question}</div>
           <ul class="choices">
             ${Object.entries(q.choices).map(
-              ([k, v]) => `<li data-option="${k}">${k}) ${v}</li>`
+              ([k,v])=>`<li data-option="${k}">${k}) ${v}</li>`
             ).join("")}
           </ul>
-          <div class="explanation">
-            <strong>Açıklama:</strong> ${q.explanation}
-          </div>
+          <div class="explanation">${q.explanation}</div>
         </div>
       `;
     });
@@ -170,45 +225,40 @@ async function searchTopic() {
       <div class="card">
         <h2>${data.topic}</h2>
         <div class="story">${data.story}</div>
-        ${html}
-        <p id="score" style="font-weight:600;margin-top:16px;"></p>
+        ${qHtml}
+        <div id="score"></div>
       </div>
     `;
 
     bindQuestions();
 
-  } catch (e) {
-    resultDiv.innerHTML = "<p>Hata oluştu</p>";
+  } catch {
+    resultDiv.innerHTML = "<p>Bağlantı hatası</p>";
   }
 
-  isLoading = false;
+  loading = false;
 }
 
 function bindQuestions() {
-  document.querySelectorAll(".question-block").forEach(block => {
+  document.querySelectorAll(".question-block").forEach(block=>{
     const correct = block.dataset.answer;
     const explanation = block.querySelector(".explanation");
-    const choices = block.querySelectorAll("li");
 
-    choices.forEach(li => {
-      li.addEventListener("click", () => {
-        if (block.classList.contains("done")) return;
+    block.querySelectorAll("li").forEach(li=>{
+      li.addEventListener("click",()=>{
+        if(block.classList.contains("done")) return;
         block.classList.add("done");
 
-        const selected = li.dataset.option;
-
-        if (selected === correct) {
+        if(li.dataset.option===correct){
           li.classList.add("correct");
           score++;
         } else {
           li.classList.add("wrong");
-          block.querySelector(`li[data-option="${correct}"]`)
-            ?.classList.add("correct");
+          block.querySelector(`[data-option="${correct}"]`)?.classList.add("correct");
         }
 
-        explanation.style.display = "block";
-        document.getElementById("score").innerText =
-          `Skor: ${score} / 5`;
+        explanation.style.display="block";
+        document.getElementById("score").innerText=`Skor: ${score} / 5`;
       });
     });
   });
