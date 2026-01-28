@@ -57,20 +57,37 @@
       border-top: 1px solid #e5e7eb;
     }
 
+    .choices { list-style: none; padding: 0; }
+
     .choices li {
       padding: 12px 14px;
       border-radius: 10px;
       background: #f9fafb;
       margin-bottom: 10px;
       cursor: pointer;
+      transition: 0.2s;
     }
 
-    .correct { background: #dcfce7; }
-    .wrong { background: #fee2e2; }
+    .choices li:hover {
+      background: #eef2ff;
+    }
+
+    .correct {
+      background: #dcfce7 !important;
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .wrong {
+      background: #fee2e2 !important;
+      color: #991b1b;
+    }
 
     .explanation {
-      display: none; margin-top: 10px;
-      font-size: 14px; color: #6b7280;
+      display: none;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #6b7280;
     }
 
     .spinner {
@@ -90,7 +107,7 @@
   <div class="container">
     <div class="hero">
       <h1>KPSS Tarih</h1>
-      <p>Konuyu yaz, yapay zekâ KPSS düzeyinde anlatsın.</p>
+      <p>Konuyu yaz, yapay zekâ KPSS düzeyinde anlatsın ve sorularla ölç.</p>
       <div class="divider"></div>
     </div>
 
@@ -103,96 +120,99 @@
   </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+let score = 0;
+let isLoading = false;
 
-  let score = 0;
-  let isLoading = false;
+document.getElementById("searchBtn").addEventListener("click", searchTopic);
 
-  const btn = document.getElementById("searchBtn");
-  btn.addEventListener("click", searchTopic);
+async function searchTopic() {
+  if (isLoading) return;
+  isLoading = true;
+  score = 0;
 
-  async function searchTopic() {
-    if (isLoading) return;
-    isLoading = true;
+  const query = document.getElementById("query").value.trim();
+  if (!query) {
+    alert("Konu gir");
+    isLoading = false;
+    return;
+  }
 
-    const query = document.getElementById("query").value.trim();
-    if (!query) {
-      alert("Konu gir");
-      isLoading = false;
-      return;
-    }
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = `<div class="spinner"></div>`;
 
-    const resultDiv = document.getElementById("result");
-    resultDiv.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const response = await fetch("/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query })
+    });
 
-    try {
-      const response = await fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query })
-      });
+    const data = await response.json();
 
-      const data = await response.json();
-
-      let html = "";
-      data.questions.forEach((q, i) => {
-        html += `
-          <div class="question-block" data-answer="${q.answer}">
-            <div><strong>${i+1}. ${q.question}</strong></div>
-            <ul class="choices">
-              ${Object.entries(q.choices).map(
-                ([k,v]) => `<li data-option="${k}">${k}) ${v}</li>`
-              ).join("")}
-            </ul>
-            <div class="explanation">${q.explanation}</div>
+    let html = "";
+    data.questions.forEach((q, i) => {
+      html += `
+        <div class="question-block" data-answer="${q.answer}">
+          <div><strong>${i + 1}. ${q.question}</strong></div>
+          <ul class="choices">
+            ${Object.entries(q.choices).map(
+              ([k, v]) => `<li data-option="${k}">${k}) ${v}</li>`
+            ).join("")}
+          </ul>
+          <div class="explanation">
+            <strong>Açıklama:</strong> ${q.explanation}
           </div>
-        `;
-      });
-
-      resultDiv.innerHTML = `
-        <div class="card">
-          <h2>${data.topic}</h2>
-          <div class="story">${data.story}</div>
-          ${html}
-          <p id="score"></p>
         </div>
       `;
+    });
 
-      bindQuestions();
+    resultDiv.innerHTML = `
+      <div class="card">
+        <h2>${data.topic}</h2>
+        <div class="story">${data.story}</div>
+        ${html}
+        <p id="score" style="font-weight:600;margin-top:16px;"></p>
+      </div>
+    `;
 
-    } catch {
-      resultDiv.innerHTML = "<p>Hata oluştu</p>";
-    }
+    bindQuestions();
 
-    isLoading = false;
+  } catch (e) {
+    resultDiv.innerHTML = "<p>Hata oluştu</p>";
   }
 
-  function bindQuestions() {
-    document.querySelectorAll(".question-block").forEach(block => {
-      const correct = block.dataset.answer;
-      const explanation = block.querySelector(".explanation");
+  isLoading = false;
+}
 
-      block.querySelectorAll("li").forEach(li => {
-        li.addEventListener("click", () => {
-          if (block.classList.contains("done")) return;
-          block.classList.add("done");
+function bindQuestions() {
+  document.querySelectorAll(".question-block").forEach(block => {
+    const correct = block.dataset.answer;
+    const explanation = block.querySelector(".explanation");
+    const choices = block.querySelectorAll("li");
 
-          if (li.dataset.option === correct) {
-            li.classList.add("correct");
-            score++;
-          } else {
-            li.classList.add("wrong");
-            block.querySelector(`[data-option="${correct}"]`)?.classList.add("correct");
-          }
+    choices.forEach(li => {
+      li.addEventListener("click", () => {
+        if (block.classList.contains("done")) return;
+        block.classList.add("done");
 
-          explanation.style.display = "block";
-          document.getElementById("score").innerText = `Skor: ${score} / 5`;
-        });
+        const selected = li.dataset.option;
+
+        if (selected === correct) {
+          li.classList.add("correct");
+          score++;
+        } else {
+          li.classList.add("wrong");
+          block.querySelector(`li[data-option="${correct}"]`)
+            ?.classList.add("correct");
+        }
+
+        explanation.style.display = "block";
+        document.getElementById("score").innerText =
+          `Skor: ${score} / 5`;
       });
     });
-  }
-
-});
+  });
+}
 </script>
 </body>
 </html>
