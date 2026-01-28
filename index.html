@@ -10,42 +10,78 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ===== RESET ===== */
+    /* =====================
+       THEME VARIABLES
+    ===================== */
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #6366f1;
+      --border: #e5e7eb;
+      --choice: #f9fafb;
+      --correct: #dcfce7;
+      --wrong: #fee2e2;
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --card: #020617;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --primary: #818cf8;
+      --border: #1e293b;
+      --choice: #020617;
+      --correct: #14532d;
+      --wrong: #7f1d1d;
+    }
+
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: 'Inter', system-ui, sans-serif;
-      background: #f8fafc;
-      color: #111827;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.2s, color 0.2s;
     }
 
-    /* ===== LAYOUT ===== */
     .container {
       max-width: 720px;
       margin: 0 auto;
       padding: 20px 16px 80px;
     }
 
-    /* ===== HEADER ===== */
-    .hero {
-      text-align: center;
-      margin-bottom: 24px;
+    /* HEADER */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
     .hero h1 {
       font-size: 26px;
-      margin-bottom: 6px;
-      font-weight: 700;
+      margin: 0;
     }
 
     .hero p {
       font-size: 14px;
-      color: #6b7280;
-      line-height: 1.5;
+      color: var(--muted);
     }
 
-    /* ===== SEARCH ===== */
+    .toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--text);
+    }
+
+    /* SEARCH */
     .search-box {
       display: flex;
       flex-direction: column;
@@ -54,48 +90,48 @@
     }
 
     input {
-      padding: 14px 14px;
+      padding: 14px;
       font-size: 16px;
       border-radius: 12px;
-      border: 1px solid #d1d5db;
-      outline: none;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
     }
 
     button {
       padding: 14px;
       font-size: 16px;
       font-weight: 600;
-      background: #6366f1;
+      background: var(--primary);
       color: white;
       border: none;
       border-radius: 12px;
       cursor: pointer;
     }
 
-    /* ===== CARD ===== */
+    /* CARD */
     .card {
-      background: white;
+      background: var(--card);
       padding: 20px;
       border-radius: 18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
     }
 
     .story {
       font-size: 14px;
       line-height: 1.8;
       margin-bottom: 24px;
-      color: #374151;
+      color: var(--text);
     }
 
-    /* ===== QUESTIONS ===== */
+    /* QUESTIONS */
     .question-block {
       margin-bottom: 26px;
       padding-top: 18px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid var(--border);
     }
 
     .question {
-      font-size: 15px;
       font-weight: 600;
       margin-bottom: 12px;
     }
@@ -109,45 +145,40 @@
     .choices li {
       padding: 14px;
       border-radius: 12px;
-      background: #f9fafb;
+      background: var(--choice);
       margin-bottom: 10px;
       cursor: pointer;
-      font-size: 15px;
       border: 2px solid transparent;
     }
 
     .correct {
-      background: #dcfce7;
+      background: var(--correct);
       border-color: #22c55e;
-      color: #166534;
-      font-weight: 600;
     }
 
     .wrong {
-      background: #fee2e2;
+      background: var(--wrong);
       border-color: #ef4444;
-      color: #991b1b;
     }
 
     .explanation {
       display: none;
       margin-top: 10px;
       font-size: 13px;
-      color: #6b7280;
+      color: var(--muted);
     }
 
     #score {
       margin-top: 20px;
-      font-weight: 600;
       text-align: center;
+      font-weight: 600;
     }
 
-    /* ===== SPINNER ===== */
     .spinner {
       width: 36px;
       height: 36px;
-      border: 4px solid #e5e7eb;
-      border-top: 4px solid #6366f1;
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 40px auto;
@@ -156,20 +187,18 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
-
-    /* ===== DESKTOP ===== */
-    @media (min-width: 768px) {
-      .hero h1 { font-size: 32px; }
-      .container { padding: 40px 20px 100px; }
-    }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <div class="hero">
-      <h1>KPSS Tarih AI</h1>
-      <p>Konuyu yaz, yapay zekâ KPSS düzeyinde anlatsın ve sorularla ölç.</p>
+
+    <div class="top-bar">
+      <div class="hero">
+        <h1>KPSS Tarih AI</h1>
+        <p>Konuyu yaz, yapay zekâ KPSS düzeyinde anlatsın ve sorularla ölç.</p>
+      </div>
+      <button class="toggle" id="themeToggle">🌙</button>
     </div>
 
     <div class="search-box">
@@ -181,6 +210,23 @@
   </div>
 
 <script>
+/* ===== THEME ===== */
+const toggleBtn = document.getElementById("themeToggle");
+const savedTheme = localStorage.getItem("theme");
+
+if (savedTheme === "dark") {
+  document.body.classList.add("dark");
+  toggleBtn.innerText = "🌞";
+}
+
+toggleBtn.onclick = () => {
+  document.body.classList.toggle("dark");
+  const isDark = document.body.classList.contains("dark");
+  localStorage.setItem("theme", isDark ? "dark" : "light");
+  toggleBtn.innerText = isDark ? "🌞" : "🌙";
+};
+
+/* ===== APP ===== */
 let score = 0;
 let loading = false;
 
@@ -245,7 +291,7 @@ function bindQuestions() {
     const explanation = block.querySelector(".explanation");
 
     block.querySelectorAll("li").forEach(li=>{
-      li.addEventListener("click",()=>{
+      li.onclick = () => {
         if(block.classList.contains("done")) return;
         block.classList.add("done");
 
@@ -259,7 +305,7 @@ function bindQuestions() {
 
         explanation.style.display="block";
         document.getElementById("score").innerText=`Skor: ${score} / 5`;
-      });
+      };
     });
   });
 }
